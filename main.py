@@ -1,13 +1,7 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-import math
 
 from pybaseball import statcast
 from pathlib import Path
-from pybaseball import cache
-from pybaseball import team_game_logs
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -17,8 +11,9 @@ from pybaseball import schedule_and_record
 import os.path
 import pandas as pd
 from pybaseball import get_splits
+import subprocess
 
-from pybaseball import statcast_batter
+import sys
 
 play_value = {}
 play_value["strikeout"] = 0.0
@@ -71,6 +66,7 @@ city_name["DET"] = "Detroit"
 city_name["SF"] = "San Fransisco"
 city_name["STL"] = "St. Louis"
 city_name["MIA"] = "Miami"
+city_name["MEX"] = "Mexico City"
 
 # for other weather
 city_latlon = {}
@@ -137,7 +133,8 @@ park_name["SF"] = 28.0
 park_name["STL"] = 29.0
 park_name["MIA"] = 30.0
 
-cache.enable()
+
+# cache.enable()
 
 
 def main_statcast(start, end):
@@ -182,20 +179,23 @@ def clean_up_statcast(filename):
                 batter_name = ''.join(text)
             print(batter_name)
             print(row["player_name"])
-            new_df.at[index, "date"] = row["game_date"]
-            new_df.at[index, "park"] = row["home_team"]
-            new_df.at[index, "pitch_speed"] = row["release_speed"]
-            new_df.at[index, "pitcher_name"] = row["player_name"]
-            new_df.at[index, "pitcher_id"] = row["pitcher"]
-            new_df.at[index, "batter_name"] = batter_name
-            new_df.at[index, "batter_id"] = row["batter"]
-            new_df.at[index, "event"] = row["events"]
-            if pd.isnull(row["bb_type"]):
-                new_df.at[index, "type_of_hit"] = "none"
-            new_df.at[index, "type_of_hit"] = row["bb_type"]
-            new_df.at[index, "pitcher_hand"] = row["p_throws"]
-            new_df.at[index, "batter_hand"] = row["stand"]
-            new_df.at[index, "pitch_type"] = row["pitch_type"]
+            try:
+                new_df.at[index, "date"] = row["game_date"]
+                new_df.at[index, "park"] = row["home_team"]
+                new_df.at[index, "pitch_speed"] = row["release_speed"]
+                new_df.at[index, "pitcher_name"] = row["player_name"]
+                new_df.at[index, "pitcher_id"] = row["pitcher"]
+                new_df.at[index, "batter_name"] = batter_name
+                new_df.at[index, "batter_id"] = row["batter"]
+                new_df.at[index, "event"] = row["events"]
+                if pd.isnull(row["bb_type"]):
+                    new_df.at[index, "type_of_hit"] = "none"
+                new_df.at[index, "type_of_hit"] = row["bb_type"]
+                new_df.at[index, "pitcher_hand"] = row["p_throws"]
+                new_df.at[index, "batter_hand"] = row["stand"]
+                new_df.at[index, "pitch_type"] = row["pitch_type"]
+            except:
+                continue
     new_df.to_csv("cleaned_up_" + filename, index=False)
     return "cleaned_up_" + filename
 
@@ -245,36 +245,9 @@ def get_season_stats(filename, batter, year):
                     df2.to_csv(k + "-pitcher-2022.csv")
                 else:
                     batters[k]["frame"].to_csv(k + "-2022.csv")
-    # except:
-    #     print("oops")
 
 
-# results = statcast(start_dt="2022-07-01", end_dt="2022-07-30")
-# filepath = Path('2022-07-01-2022-07-30-statcast.csv')
-# filepath.parent.mkdir(parents=True, exist_ok=True)
-# results.to_csv(filepath)
-# Index(['pitch_type', 'game_date', 'release_speed', 'release_pos_x',
-#         'release_pos_z', 'player_name', 'batter', 'pitcher', 'events',
-#         'description', 'spin_dir', 'spin_rate_deprecated',
-#         'break_angle_deprecated', 'break_length_deprecated', 'zone', 'des',
-#         'game_type', 'stand', 'p_throws', 'home_team', 'away_team', 'type',
-#         'hit_location', 'bb_type', 'balls', 'strikes', 'game_year', 'pfx_x',
-#         'pfx_z', 'plate_x', 'plate_z', 'on_3b', 'on_2b', 'on_1b',
-#         'outs_when_up', 'inning', 'inning_topbot', 'hc_x', 'hc_y',
-#         'tfs_deprecated', 'tfs_zulu_deprecated', 'fielder_2', 'umpire', 'sv_id',
-#         'vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'sz_top', 'sz_bot',
-#         'hit_distance_sc', 'launch_speed', 'launch_angle', 'effective_speed',
-#         'release_spin_rate', 'release_extension', 'game_pk', 'pitcher.1',
-#         'fielder_2.1', 'fielder_3', 'fielder_4', 'fielder_5', 'fielder_6',
-#         'fielder_7', 'fielder_8', 'fielder_9', 'release_pos_y',
-#         'estimated_ba_using_speedangle', 'estimated_woba_using_speedangle',
-#         'woba_value', 'woba_denom', 'babip_value', 'iso_value',
-#         'launch_speed_angle', 'at_bat_number', 'pitch_number', 'pitch_name',
-#         'home_score', 'away_score', 'bat_score', 'fld_score', 'post_away_score',
-#         'post_home_score', 'post_bat_score', 'post_fld_score',
-#         'if_fielding_alignment', 'of_fielding_alignment', 'spin_axis',
-#         'delta_home_win_exp', 'delta_run_exp'],
-#        dtype='object')
+
 def add_other_weather(filename, year):
     df = pd.read_csv(filename)
     weather = []
@@ -497,18 +470,46 @@ def get_batter_splits_all(filename, year):
         # print(dd.columns)
         # print("shit")
         # try:
-        print("running")
-        try:
-            for i, r in dd.iterrows():
-                if os.path.isfile(k + "-" + r['key_bbref'] + "-" + str(year) + ".csv") == True:
-                    continue
-                pitchers[k]["frame"] = get_splits(r['key_bbref'], str(year), pitching_splits=False)
+        print("running " + k + "-" + "-" + str(year) + ".csv")
+        for i, r in dd.iterrows():
+            if os.path.isfile(k + "-" + r['key_bbref'] + "-" + str(year) + ".csv") == True:
+                print("already is a file")
+                continue
+            try:
+                frame = get_splits(r['key_bbref'], str(year), pitching_splits=False)
+                print("fine")
+                pitchers[k]["frame"] = frame
                 dff = pitchers[k]["frame"]
                 print(k + "-" + r['key_bbref'] + "-" + str(year) + ".csv")
                 df2 = pd.DataFrame(dff)
                 df2.to_csv(k.lower() + "-" + r['key_bbref'] + "-" + str(year) + ".csv")
-        except:
-            continue
+            except Exception as e:
+                print(e)
+                print(r['key_bbref'])
+
+
+def get_batter_splits(name, id, year):
+    dd2 = playerid_reverse_lookup([id], "fangraphs")
+    print(id)
+    print(dd2)
+    for index, row in dd2.iterrows():
+        print(row)
+        df = get_splits(row['key_bbref'], year, pitching_splits=False)
+        df2 = pd.DataFrame(df)
+
+        df2.to_csv(name.lower() + "-" + row['key_bbref'] + "-" + str(year) + ".csv")
+
+
+def get_pitcher_splits(name, id, year):
+    dd2 = playerid_reverse_lookup([id], "fangraphs")
+    print(id)
+    print(dd2)
+    for index, row in dd2.iterrows():
+        print(row)
+        df = get_splits(row['key_bbref'], year, pitching_splits=True)[0]
+        df2 = pd.DataFrame(df)
+
+        df2.to_csv(name.lower() + "-pitcher-" + row['key_bbref'] + "-" + str(year) + ".csv")
 
 
 def get_pitcher_splits_all(filename, year):
@@ -524,30 +525,31 @@ def get_pitcher_splits_all(filename, year):
 
         # print(dd.columns)
         # print("shit")
-        # try:
+
         for i, r in dd.iterrows():
             if os.path.isfile(k.lower() + "-pitcher-" + r['key_bbref'] + "-" + str(year) + ".csv") == True:
                 print("true")
                 continue
-            pitchers[k]["frame"] = get_splits(r['key_bbref'], year, pitching_splits=True)[0]
-            dff = pitchers[k]["frame"]
-            print(k + "-pitcher-" + r['key_bbref'] + "-" + str(year) + ".csv")
-            df2 = pd.DataFrame(dff)
-            df2.to_csv(k.lower() + "-pitcher-" + r['key_bbref'] + "-" + str(year) + ".csv")
+            try:
+                pitchers[k]["frame"] = get_splits(r['key_bbref'], year, pitching_splits=True)[0]
+                dff = pitchers[k]["frame"]
+                print(k + "-pitcher-" + r['key_bbref'] + "-" + str(year) + ".csv")
+                df2 = pd.DataFrame(dff)
+                df2.to_csv(k.lower() + "-pitcher-" + r['key_bbref'] + "-" + str(year) + ".csv")
+            except Exception as e:
+                print(e)
+                print(r['key_bbref'])
 
 
-def get_pitcher_splits(name):
-    name.lower()
-    v = name.split()
-    V = v[0].split(",")
-    dd = playerid_lookup(V[0], v[1])
-    dd2 = playerid_reverse_lookup([660853])
+def get_pitcher_splits(name, id, year):
+    dd2 = playerid_reverse_lookup([id], "fangraphs")
+    print(id)
     for index, row in dd2.iterrows():
         print(row)
-    for index, row in dd.iterrows():
-        print(row)
-        df = get_splits(row['key_bbref'], 2022, pitching_splits=True)
-        print(df)
+        df = get_splits(row['key_bbref'], year, pitching_splits=True)[0]
+        df2 = pd.DataFrame(df)
+
+        df2.to_csv(name.lower() + "-pitcher-" + row['key_bbref'] + "-" + str(year) + ".csv")
 
 
 def add_weather_game(filename):
@@ -624,7 +626,6 @@ def make_testdata(filename, homer=True, batch=True):
                     testdata.at[inn, "pPA"] = game[k]["pPA"]
                     testdata.at[inn, "pa"] = game[k]["pa"]
 
-
                     testdata.at[inn, "park"] = game[k]["park"]
                     testdata.at[inn, "output"] = game[k]["output"]
                     testdata.at[inn, "d_rate"] = game[k]["d_rate"]
@@ -695,7 +696,7 @@ def make_testdata(filename, homer=True, batch=True):
                 # dont change everything for batch since most PA are starters
                 v = game[row["batter_id"]]["output"]
                 vv = game[row["batter_id"]]["PA_game"]
-                vv+=1
+                vv += 1
                 v += play_val
 
                 h = game[row["batter_id"]]["hit"]
@@ -719,8 +720,11 @@ def make_testdata(filename, homer=True, batch=True):
             except:
                 hr = row["HR"]
                 phr = row["pHR"]
-                game[row["batter_id"]] = {"PA_game":1,"ba": row["BA"], "slg": row["SLG"], "hr": hr, "pa": row['PA'], "d_rate":row["double"],"t_rate":row["triple"], "hit":hit,"double":double,"triple":triple,
-                                          "pPA": row['pPA'],"pDouble": row['pDouble'],"pTriple": row['pTriple'], "park": park_name[row["park"]],
+                game[row["batter_id"]] = {"PA_game": 1, "ba": row["BA"], "slg": row["SLG"], "hr": hr, "pa": row['PA'],
+                                          "d_rate": row["double"], "t_rate": row["triple"], "hit": hit,
+                                          "double": double, "triple": triple,
+                                          "pPA": row['pPA'], "pDouble": row['pDouble'], "pTriple": row['pTriple'],
+                                          "park": park_name[row["park"]],
                                           "phr": phr, "pba": row['pBA'], "pslg": row["pSLG"],
                                           "temp": row["temp"], "wind": row["wind"], "humidity": row["humidity"],
                                           "batter_hand": batter_hand, "pitcher_hand": pitcher_hand, "output": play_val}
@@ -921,16 +925,76 @@ def add_batter_stats(filename, year):
     df.to_csv(filename, index=False)
 
 
-def get_line_up(date):
+def get_id(link):
+    id = link.split("playerid=")
+    id = id[1].split("&")
+    return id[0]
+
+
+def get_line_up(date, game, park):
     url = "http://www.fangraphs.com/livescoreboard.aspx?date=" + date
     print(url)
     response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    print(soup.title)
-    tables = soup.findAll(["tr"])
-    print(tables)
-    for i in tables:
-        print(tables[i])
+    soup = BeautifulSoup(response.content, 'html.parser')
+    results = soup.find_all("table", {"class": "lineup"})
+    game_num = 0
+    for result in results:
+        res = result.find_all("td", {"align": "left"})
+        index = 0
+        lineup = {}
+        home_pitcher = ""
+        away_pitcher = ""
+        for r in res:
+            for link in r.find_all('a', href=True):
+                if index == 0:
+                    away_pitcher = get_id(link['href'])
+                if index == 1:
+                    lineup["pitcher"] = get_id(link['href'])
+                if index == 2:
+                    lineup["one"] = get_id(link['href'])
+                if index == 3:
+                    lineup["two"] = get_id(link['href'])
+                if index == 4:
+                    lineup["three"] = get_id(link['href'])
+                if index == 5:
+                    lineup["four"] = get_id(link['href'])
+                if index == 6:
+                    lineup["five"] = get_id(link['href'])
+                if index == 7:
+                    lineup["six"] = get_id(link['href'])
+                if index == 8:
+                    lineup["seven"] = get_id(link['href'])
+                if index == 9:
+                    lineup["eight"] = get_id(link['href'])
+                if index == 10:
+                    lineup["nine"] = get_id(link['href'])
+                if index == 11:
+                    lineup["h_pitcher"] = away_pitcher
+                    lineup["a_one"] = get_id(link['href'])
+                if index == 12:
+                    lineup["a_two"] = get_id(link['href'])
+                if index == 13:
+                    lineup["a_three"] = get_id(link['href'])
+                if index == 14:
+                    lineup["a_four"] = get_id(link['href'])
+                if index == 15:
+                    lineup["a_five"] = get_id(link['href'])
+                if index == 16:
+                    lineup["a_six"] = get_id(link['href'])
+                if index == 17:
+                    lineup["a_seven"] = get_id(link['href'])
+                if index == 18:
+                    lineup["a_eight"] = get_id(link['href'])
+                if index == 19:
+                    lineup["a_nine"] = get_id(link['href'])
+                index += 1
+
+        if game_num == game:
+            lineup["park"] = park
+            df = pd.DataFrame([lineup])
+            print(df)
+            df.to_json("lineup.json", orient='records')
+        game_num += 1
 
 
 def get_today_weather(location, date, day=False):
@@ -952,76 +1016,76 @@ def get_today_weather(location, date, day=False):
         return {}, {}
 
 
-def line_up_json(file, day = False):
+def line_up_json(file, day=False, year="2022", force=False, park="TEX"):
     df = pd.read_json(file)
     print(df.columns)
     lineup_data = pd.DataFrame(
         columns=["temp", "wind", "humidity", "ba", "slg", "hr", "pa", "pba", "pslg", "phr", "pPA", "batter_hand",
-                 "pitcher_hand", "park", "name","double", "triple", "pDouble","pTriple"])
+                 "pitcher_hand", "park", "name", "double", "triple", "pDouble", "pTriple"])
     i = 0
     for index, r in df.iterrows():
         print(r["pitcher"])
-        away_pitcher, name = get_player_id(r["pitcher"], True)
+        away_pitcher, name = get_player_id(r["pitcher"], True, year, force)
         print(away_pitcher.empty)
         park = r["park"]
         if away_pitcher.empty == False:
-            h1, name = get_player_id(r["one"])
+            h1, name = get_player_id(r["one"], False, year, force)
             print(away_pitcher.columns)
-            lineup_data = make_row(lineup_data, away_pitcher, h1, i, park, name,day)
+            lineup_data = make_row(lineup_data, away_pitcher, h1, i, park, name, day)
             i += 1
-            h2, name = get_player_id(r["two"])
-            lineup_data = make_row(lineup_data, away_pitcher, h2, i, park, name,day)
+            h2, name = get_player_id(r["two"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h2, i, park, name, day)
             i += 1
-            h3, name = get_player_id(r["three"])
-            lineup_data = make_row(lineup_data, away_pitcher, h3, i, park, name,day)
+            h3, name = get_player_id(r["three"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h3, i, park, name, day)
             i += 1
-            h4, name = get_player_id(r["four"])
-            lineup_data = make_row(lineup_data, away_pitcher, h4, i, park, name,day)
+            h4, name = get_player_id(r["four"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h4, i, park, name, day)
             i += 1
-            h5, name = get_player_id(r["five"])
-            lineup_data = make_row(lineup_data, away_pitcher, h5, i, park, name,day)
+            h5, name = get_player_id(r["five"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h5, i, park, name, day)
             i += 1
-            h6, name = get_player_id(r["six"])
-            lineup_data = make_row(lineup_data, away_pitcher, h6, i, park, name,day)
+            h6, name = get_player_id(r["six"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h6, i, park, name, day)
             i += 1
-            h7, name = get_player_id(r["seven"])
-            lineup_data = make_row(lineup_data, away_pitcher, h7, i, park, name,day)
+            h7, name = get_player_id(r["seven"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h7, i, park, name, day)
             i += 1
-            h8, name = get_player_id(r["eight"])
-            lineup_data = make_row(lineup_data, away_pitcher, h8, i, park, name,day)
+            h8, name = get_player_id(r["eight"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h8, i, park, name, day)
             i += 1
-            h9, name = get_player_id(r["nine"])
-            lineup_data = make_row(lineup_data, away_pitcher, h9, i, park, name,day)
+            h9, name = get_player_id(r["nine"], False, year, force)
+            lineup_data = make_row(lineup_data, away_pitcher, h9, i, park, name, day)
             i += 1
+        h_pitcher, name = get_player_id(r["h_pitcher"], True, year, force)
 
-        h_pitcher, name = get_player_id(r["h_pitcher"], True)
         if h_pitcher.empty == False:
-            a1, name = get_player_id(r["a_one"])
-            lineup_data = make_row(lineup_data, h_pitcher, a1, i, park, name,day)
+            a1, name = get_player_id(r["a_one"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a1, i, park, name, day)
             i += 1
-            a2, name = get_player_id(r["a_two"])
-            lineup_data = make_row(lineup_data, h_pitcher, a2, i, park, name,day)
+            a2, name = get_player_id(r["a_two"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a2, i, park, name, day)
             i += 1
-            a3, name = get_player_id(r["a_three"])
-            lineup_data = make_row(lineup_data, h_pitcher, a3, i, park, name,day)
+            a3, name = get_player_id(r["a_three"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a3, i, park, name, day)
             i += 1
-            a4, name = get_player_id(r["a_four"])
-            lineup_data = make_row(lineup_data, h_pitcher, a4, i, park, name,day)
+            a4, name = get_player_id(r["a_four"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a4, i, park, name, day)
             i += 1
-            a5, name = get_player_id(r["a_five"])
-            lineup_data = make_row(lineup_data, h_pitcher, a5, i, park, name,day)
+            a5, name = get_player_id(r["a_five"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a5, i, park, name, day)
             i += 1
-            a6, name = get_player_id(r["a_six"])
-            lineup_data = make_row(lineup_data, h_pitcher, a6, i, park, name,day)
+            a6, name = get_player_id(r["a_six"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a6, i, park, name, day)
             i += 1
-            a7, name = get_player_id(r["a_seven"])
-            lineup_data = make_row(lineup_data, h_pitcher, a7, i, park, name,day)
+            a7, name = get_player_id(r["a_seven"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a7, i, park, name, day)
             i += 1
-            a8, name = get_player_id(r["a_eight"])
-            lineup_data = make_row(lineup_data, h_pitcher, a8, i, park, name,day)
+            a8, name = get_player_id(r["a_eight"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a8, i, park, name, day)
             i += 1
-            a9, name = get_player_id(r["a_nine"])
-            lineup_data = make_row(lineup_data, h_pitcher, a9, i, park, name,day)
+            a9, name = get_player_id(r["a_nine"], False, year, force)
+            lineup_data = make_row(lineup_data, h_pitcher, a9, i, park, name, day)
 
             i += 1
 
@@ -1115,51 +1179,80 @@ def make_row(lineup_data, away_pitcher, h1, index, park, name, day):
     return lineup_data
 
 
-def get_player_id(id, pitcher=False):
+def get_player_id(id, pitcher=False, year="2022", force=False):
     p = playerid_reverse_lookup([id], "fangraphs")
-    print(p.empty)
-
-    for i, row in p.iterrows():
-        id = row["key_bbref"]
-        print(id)
-        if pitcher == True:
-            file = row["name_last"] + ", " + row["name_first"] + "-pitcher-" + id + "-2022.csv"
-        else:
-            file = row["name_first"] + " " + row["name_last"] + "-2022.csv"
-        print(file)
-
-        return get_player(file), row["name_first"] + " " + row["name_last"]
-
-
-def get_player(file):
+    print(id)
+    print("what")
     try:
-        df2 = pd.read_csv(file)
+        for i, row in p.iterrows():
+            id = row["key_bbref"]
+            print(id)
+            if pitcher == True:
+                print(row["name_last"] + ", " + row["name_first"] + "-pitcher-" + id + "-" + year + ".csv")
+                file = row["name_last"] + ", " + row["name_first"] + "-pitcher-" + id + "-" + year + ".csv"
+            else:
+                file = row["name_first"] + " " + row["name_last"] +"-"+id + "-" + year + ".csv"
+            print(file)
+
+            return get_player(file, row["key_fangraphs"], row["name_first"] + " " + row["name_last"],pitcher, force, int(year)), row["name_first"] + " " + row["name_last"]
+        return pd.DataFrame(), "cunt bag"
     except:
-        return pd.DataFrame()
-    return df2
+        return pd.DataFrame(), "cunt bag"
+
+def get_player(file, id, name, pitcher=False, force=False, year=2022):
+    df2 = pd.DataFrame()
+    try:
+        if os.path.isfile(file) == True:
+            if force== False:
+                df2 = pd.read_csv(file)
+            else:
+                if pitcher == False:
+                    get_batter_splits(name, id, year)
+                    f = file.split("2022")
+                    f = f[0] + "2023"
+                    df2 = pd.read_csv(file)
+                else:
+                    n = name.split(" ")
+                    name = n[1] + ", " + n[0]
+                    get_pitcher_splits(name, id, year)
+                    df2 = pd.read_csv(file)
+        else:
+            if pitcher == False:
+                get_batter_splits(name, id, year)
+                f = file.split("2022")
+                f = f[0] + "2023"
+                df2 = pd.read_csv(file)
+            else:
+                n = name.split(" ")
+                name = n[1]+", "+n[0]
+                get_pitcher_splits(name, id, year)
+                df2 = pd.read_csv(file)
+        return df2
+    except:
+        return df2
 
 
+years = [["2005-03-29", "2005-09-30"]]
 
-years = [["2015-03-29", "2015-09-30"],["2016-03-29", "2016-09-30"],["2005-03-29", "2005-09-30"],["2006-03-29", "2006-09-30"],["2007-03-29", "2007-09-30"],["2008-03-29", "2008-09-30"],["2009-03-29", "2009-09-30"]]
-for val in years:
-    main_statcast(val[0],val[1])
-    print("next step")
-    return_file = clean_up_statcast(val[0]+"-"+val[1]+"-statcast.csv")
-    year = val[0].split("-")[0]
-    return_file = "cleaned_up_" + val[0] + "-" + val[1] + "-statcast.csv"
-    get_batter_splits_all(return_file, int(year))
-    get_pitcher_splits_all(return_file, int(year))
+do = sys.argv[1]
+team = sys.argv[2]
+day = sys.argv[3]
+index = sys.argv[4]
+if do == "t":
+    get_line_up("2023-05-18", int(index), team)
 
-    add_other_weather(return_file, int(year))
-    get_day_night(int(year))
-    fix_dates(year)
-    line_up_times(return_file, year)
-    print("adding weather")
-    add_weather_game(return_file)
-    add_batter_stats(return_file, year)
-    add_pitcher_stats(return_file, year)
-    make_testdata(return_file, True, True)
+if day=="t":
+    line_up_json("./lineup.json", True, "2022", False)
+else:
+    line_up_json("./lineup.json", False, "2022", False)
+p = subprocess.Popen(['/usr/local/bin/node', '../brain-baseball/index.js', '--team='+team], stdout=subprocess.PIPE)
+out = p.stdout.read()
+print(out)
+if day=="t":
+    line_up_json("./lineup.json", True, "2023", True)
+else:
+    line_up_json("./lineup.json", False, "2023", True)
 
-
-line_up_json("../brain-baseball/lineup.json", True)
-
+p = subprocess.Popen(['/usr/local/bin/node', '../brain-baseball/index.js', '--team='+team], stdout=subprocess.PIPE)
+out = p.stdout.read()
+print(out)
