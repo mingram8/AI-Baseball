@@ -1238,8 +1238,9 @@ do = sys.argv[1]
 team = sys.argv[2]
 day = sys.argv[3]
 index = sys.argv[4]
+date = sys.argv[5]
 if do == "t":
-    get_line_up("2023-05-18", int(index), team)
+    get_line_up(date, int(index), team)
 
 if day=="t":
     line_up_json("./lineup.json", True, "2022", False)
